@@ -41,9 +41,13 @@ In the repository's **Settings → Pages**, choose **GitHub Actions** as the pub
 
 Open the hosted site in a supported browser and use its **Install app** or **Add to Home screen** option. PWA installation and offline behavior depend on browser support and require HTTPS or localhost.
 
-## Android wrapper (optional)
+## Android APK
 
-This project does not require an APK. To package the web app with Capacitor, install Android Studio and its Android SDK, then run:
+The Android app wraps the same practice assistant in a Capacitor WebView. It supports Android 6.0 and newer and does not need root. It is not connected to Free Fire and cannot control the game.
+
+To build an APK on GitHub, open **Actions → Build TXB Gaming Panel Android APK → Run workflow**. When the run succeeds, open it and download the `txb-gaming-panel-debug-apk` artifact. Extract `app-debug.apk` from the ZIP, copy it to the phone, then tap it to install. Android may ask you to allow installs from that file app. This is a debug APK for personal use, not a Play Store release.
+
+To build locally, install Android Studio and its Android SDK, then run:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -52,7 +56,7 @@ pnpm android:sync
 pnpm android:open
 ```
 
-Build or run the Android wrapper from Android Studio. It is still a WebView app and does not add game-control, root, overlay, or anti-cheat features.
+Build or run the Android wrapper from Android Studio. It remains a WebView app and does not add game-control or system-wide overlay features.
 
 ## Verification checklist
 
@@ -63,4 +67,3 @@ Build or run the Android wrapper from Android Studio. It is still a WebView app 
 - [ ] Open the quick panel and confirm its switches match the dashboard.
 - [ ] Run the browser latency check and try the PWA install option where available.
 - [ ] Reload the page and confirm settings persist in that browser.
-
