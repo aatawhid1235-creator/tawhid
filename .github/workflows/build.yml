@@ -1,0 +1,411 @@
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write project files
+        run: |
+          mkdir -p app/src/main/java/com/tawhid/boost
+          cat > settings.gradle.kts <<'EOF_0'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = "TawhidBoost"
+          include(":app")
+          EOF_0
+          cat > build.gradle.kts <<'EOF_1'
+          plugins {
+              id("com.android.application") version "8.5.2" apply false
+              id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+          }
+          EOF_1
+          cat > gradle.properties <<'EOF_2'
+          android.useAndroidX=true
+          EOF_2
+          cat > app/build.gradle.kts <<'EOF_3'
+          plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
+          android {
+              namespace = "com.tawhid.boost"
+              compileSdk = 34
+              defaultConfig { applicationId = "com.tawhid.boost"; minSdk = 31; targetSdk = 34; versionCode = 1; versionName = "1.0" }
+              buildFeatures { compose = true }
+              composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
+              kotlinOptions { jvmTarget = "17" }
+              compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+              buildTypes { release { isMinifyEnabled = true; isShrinkResources = true } }
+          }
+          dependencies {
+              implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+              implementation("androidx.compose.material3:material3")
+              implementation("androidx.compose.ui:ui")
+              implementation("androidx.activity:activity-compose:1.9.0")
+              implementation("dev.rikka.shizuku:api:13.1.5")
+              implementation("dev.rikka.shizuku:provider:13.1.5")
+          }
+          EOF_3
+          cat > app/src/main/AndroidManifest.xml <<'EOF_4'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="moe.shizuku.manager.permission.API_V23"/>
+              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+              <application android:label="Tawhid Boost" android:theme="@android:style/Theme.Material.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <service android:name=".BoostService" android:exported="false" android:foregroundServiceType="specialUse">
+                      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="gaming_performance_monitor"/>
+                  </service>
+                  <provider android:name="rikka.shizuku.ShizukuProvider" android:authorities="${applicationId}.shizuku"
+                      android:multiprocess="false" android:enabled="true" android:exported="true"
+                      android:permission="android.permission.INTERACT_ACROSS_USERS_FULL"/>
+              </application>
+          </manifest>
+          EOF_4
+          cat > app/src/main/java/com/tawhid/boost/Sh.kt <<'EOF_5'
+          package com.tawhid.boost
+
+          import rikka.shizuku.Shizuku
+
+          /** Runs a shell command with Shizuku (ADB-level) privileges. newProcess is non-public in API 13, hence reflection. */
+          object Sh {
+              fun run(cmd: String): String {
+                  val m = Shizuku::class.java.getDeclaredMethod(
+                      "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
+                  ).apply { isAccessible = true }
+                  val p = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
+                  val out = p.inputStream.bufferedReader().readText() + p.errorStream.bufferedReader().readText()
+                  p.waitFor()
+                  return out.trim()
+              }
+          }
+          EOF_5
+          cat > app/src/main/java/com/tawhid/boost/Cfg.kt <<'EOF_6'
+          package com.tawhid.boost
+
+          import android.content.Context
+
+          object Cfg {
+              fun p(c: Context) = c.getSharedPreferences("p", 0)
+              fun applyCmds(mode: String, fps: String, pkg: String): List<String> {
+                  val (gm, scale) = when (mode) {
+                      "BALANCED" -> "standard" to "1.0"
+                      "PERFORMANCE" -> "performance" to "0.8"
+                      else -> "performance" to "0.6"
+                  }
+                  val n = if (gm == "performance") 2 else 1
+                  return listOf("cmd game mode $gm $pkg", "cmd game set --mode $n --downscale $scale --fps $fps $pkg")
+              }
+              fun resetCmds(pkg: String) = listOf("cmd game reset $pkg")
+          }
+          EOF_6
+          cat > app/src/main/java/com/tawhid/boost/BoostService.kt <<'EOF_7'
+          package com.tawhid.boost
+
+          import android.app.*
+          import android.content.*
+          import android.content.pm.ServiceInfo
+          import android.graphics.Color
+          import android.graphics.PixelFormat
+          import android.graphics.Typeface
+          import android.hardware.display.DisplayManager
+          import android.os.*
+          import android.provider.Settings
+          import android.view.Gravity
+          import android.view.MotionEvent
+          import android.view.WindowManager
+          import android.widget.TextView
+          import androidx.core.app.NotificationCompat
+          import androidx.core.app.ServiceCompat
+          import kotlinx.coroutines.*
+          import kotlin.math.roundToInt
+
+          class BoostService : Service() {
+              private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+              private val ui = Handler(Looper.getMainLooper())
+              private var job: Job? = null
+              private var tv: TextView? = null
+              private var cur: String? = null
+              private lateinit var wm: WindowManager
+
+              override fun onBind(i: Intent?): IBinder? = null
+
+              override fun onStartCommand(i: Intent?, f: Int, id: Int): Int {
+                  if (i?.action == "STOP") { Cfg.p(this).edit().putBoolean("boost", false).apply(); stopSelf(); return START_NOT_STICKY }
+                  wm = getSystemService(WINDOW_SERVICE) as WindowManager
+                  notify("Gaming Boost is active", true)
+                  if (job == null) job = scope.launch { loop() }
+                  return START_STICKY
+              }
+
+              private fun notify(text: String, first: Boolean = false) {
+                  val nm = getSystemService(NotificationManager::class.java)
+                  nm.createNotificationChannel(NotificationChannel("boost", "Gaming Boost", NotificationManager.IMPORTANCE_LOW))
+                  val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                  val stop = PendingIntent.getService(this, 1, Intent(this, BoostService::class.java).setAction("STOP"), flags)
+                  val open = PendingIntent.getActivity(this, 2, Intent(this, MainActivity::class.java), flags)
+                  val n = NotificationCompat.Builder(this, "boost").setSmallIcon(android.R.drawable.ic_media_play)
+                      .setContentTitle("TAWHID BOOST").setContentText(text).setOngoing(true)
+                      .addAction(0, "STOP BOOST", stop).addAction(0, "OPEN APP", open).build()
+                  if (first) ServiceCompat.startForeground(this, 1, n, if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
+                  else nm.notify(1, n)
+              }
+
+              private suspend fun loop() {
+                  val games = loadGames(this).map { it.pkg }.toSet()
+                  var layer: String? = null
+                  while (currentCoroutineContext().isActive) {
+                      val top = try { Sh.run("dumpsys activity activities | grep -m1 topResumedActivity") } catch (_: Throwable) { "" }
+                      val pkg = Regex("([a-zA-Z0-9_.]+)/").find(top)?.groupValues?.get(1)
+                      val g = if (pkg in games) pkg else null
+                      if (g != cur) {
+                          cur?.let { runCmds(Cfg.resetCmds(it)) }
+                          cur = g; layer = null
+                          if (g == null) { hideOverlay(); notify("Gaming Boost is active") }
+                          else {
+                              val p = Cfg.p(this@BoostService)
+                              runCmds(Cfg.applyCmds(p.getString("mode", "PERFORMANCE")!!, p.getString("fps", "60")!!, g))
+                              notify("GAME BOOST ACTIVE: $g")
+                              if (p.getBoolean("overlay", true) && Settings.canDrawOverlays(this@BoostService)) showOverlay()
+                          }
+                      }
+                      if (g != null) {
+                          layer = layer ?: findLayer(g)
+                          val f = layer?.let { try { fps(it) } catch (_: Throwable) { null } }
+                          setText(stats(f))
+                          delay(1000)
+                      } else delay(3000)
+                  }
+              }
+
+              private fun runCmds(c: List<String>) = c.forEach { try { Sh.run(it) } catch (_: Throwable) {} }
+
+              private fun findLayer(pkg: String): String? = try {
+                  val l = Sh.run("dumpsys SurfaceFlinger --list").lines().map { it.trim() }.filter { pkg in it }
+                  l.firstOrNull { "SurfaceView" in it } ?: l.firstOrNull { "Background" !in it && "Bounds" !in it }
+              } catch (_: Throwable) { null }
+
+              private fun fps(layer: String): Int? {
+                  val t = Sh.run("dumpsys SurfaceFlinger --latency '$layer'").lines().drop(1)
+                      .mapNotNull { it.split("\t").getOrNull(1)?.trim()?.toLongOrNull() }.filter { it in 1 until Long.MAX_VALUE / 2 }
+                  if (t.size < 2) return null
+                  val span = (t.max() - t.min()) / 1e9
+                  return if (span > 0) ((t.size - 1) / span).roundToInt() else null
+              }
+
+              private fun stats(f: Int?): String {
+                  val mi = ActivityManager.MemoryInfo().also { getSystemService(ActivityManager::class.java).getMemoryInfo(it) }
+                  val gb = 1024.0 * 1024 * 1024
+                  val hz = (getSystemService(DisplayManager::class.java).getDisplay(0).refreshRate).roundToInt()
+                  val temp = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.getIntExtra("temperature", -1) ?: -1
+                  return "${if (f != null) "FPS: $f" else "FPS unavailable"}\nRefresh: ${hz}Hz\n" +
+                      "RAM: %.1f / %.1f GB\nCPU: --%%\nTEMP: ${if (temp > 0) "${temp / 10}°C" else "--"}".format((mi.totalMem - mi.availMem) / gb, mi.totalMem / gb)
+              }
+
+              private fun setText(s: String) { ui.post { tv?.text = s } }
+
+              private fun showOverlay() = ui.post {
+                  if (tv != null) return@post
+                  val lp = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT)
+                      .apply { gravity = Gravity.TOP or Gravity.START; x = 24; y = 120 }
+                  val v = TextView(this).apply {
+                      setTextColor(Color.parseColor("#00E5FF")); textSize = 11f; typeface = Typeface.MONOSPACE
+                      setBackgroundColor(Color.argb(110, 0, 0, 0)); setPadding(16, 8, 16, 8); text = "…"
+                  }
+                  var sx = 0f; var sy = 0f; var ox = 0; var oy = 0
+                  v.setOnTouchListener { _, e ->
+                      when (e.action) {
+                          MotionEvent.ACTION_DOWN -> { sx = e.rawX; sy = e.rawY; ox = lp.x; oy = lp.y }
+                          MotionEvent.ACTION_MOVE -> { lp.x = ox + (e.rawX - sx).toInt(); lp.y = oy + (e.rawY - sy).toInt(); wm.updateViewLayout(v, lp) }
+                      }
+                      true
+                  }
+                  try { wm.addView(v, lp); tv = v } catch (_: Throwable) {}
+              }
+
+              private fun hideOverlay() = ui.post { tv?.let { try { wm.removeView(it) } catch (_: Throwable) {} }; tv = null }
+
+              override fun onDestroy() {
+                  job?.cancel()
+                  val g = cur
+                  hideOverlay()
+                  if (g != null) Thread { runCmds(Cfg.resetCmds(g)) }.start()
+                  scope.cancel()
+                  super.onDestroy()
+              }
+          }
+          EOF_7
+          cat > app/src/main/java/com/tawhid/boost/MainActivity.kt <<'EOF_8'
+          package com.tawhid.boost
+
+          import android.Manifest
+          import android.content.Context
+          import android.content.Intent
+          import android.content.pm.ApplicationInfo
+          import android.content.pm.PackageManager
+          import android.hardware.display.DisplayManager
+          import android.net.Uri
+          import android.os.Build
+          import android.os.Bundle
+          import android.provider.Settings
+          import android.widget.Toast
+          import androidx.activity.ComponentActivity
+          import androidx.activity.compose.rememberLauncherForActivityResult
+          import androidx.activity.compose.setContent
+          import androidx.activity.result.contract.ActivityResultContracts
+          import androidx.compose.foundation.BorderStroke
+          import androidx.compose.foundation.clickable
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.foundation.lazy.items
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.platform.LocalContext
+          import androidx.compose.ui.unit.dp
+          import androidx.core.content.ContextCompat
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.launch
+          import kotlinx.coroutines.withContext
+          import rikka.shizuku.Shizuku
+          import kotlin.math.roundToInt
+
+          private val Neon = Color(0xFFB388FF)
+          private val Cyan = Color(0xFF00E5FF)
+
+          class MainActivity : ComponentActivity() {
+              private var tick by mutableIntStateOf(0)
+              override fun onResume() { super.onResume(); tick++ }
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContent {
+                      MaterialTheme(colorScheme = darkColorScheme(primary = Neon, background = Color.Black, surface = Color(0xFF101018))) {
+                          Surface(Modifier.fillMaxSize(), color = Color.Black) { Screen(tick) }
+                      }
+                  }
+              }
+          }
+
+          data class Game(val label: String, val pkg: String)
+
+          fun loadGames(c: Context): List<Game> {
+              val pm = c.packageManager
+              return pm.getInstalledApplications(0).filter { it.category == ApplicationInfo.CATEGORY_GAME }
+                  .map { Game(pm.getApplicationLabel(it).toString(), it.packageName) }.sortedBy { it.label }
+          }
+
+          private fun refreshRates(c: Context): List<Int> =
+              (c.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager).getDisplay(0)
+                  .supportedModes.map { it.refreshRate.roundToInt() }.distinct().sorted()
+
+          @Composable
+          private fun Card(content: @Composable ColumnScope.() -> Unit) = OutlinedCard(
+              Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Neon),
+              colors = CardDefaults.outlinedCardColors(containerColor = Color(0xFF101018))
+          ) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content) }
+
+          @Composable
+          private fun Chips(opts: List<String>, sel: String, onPick: (String) -> Unit) =
+              Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  opts.forEach { FilterChip(selected = it == sel, onClick = { onPick(it) }, label = { Text(it) }) }
+              }
+
+          @Composable
+          private fun Screen(tick: Int) {
+              val ctx = LocalContext.current
+              val scope = rememberCoroutineScope()
+              val prefs = remember { Cfg.p(ctx) }
+              var ready by remember { mutableStateOf(false) }
+              var log by remember { mutableStateOf("") }
+              var sel by remember { mutableStateOf<Game?>(null) }
+              var fps by remember { mutableStateOf(prefs.getString("fps", "60")!!) }
+              var mode by remember { mutableStateOf(prefs.getString("mode", "PERFORMANCE")!!) }
+              var overlay by remember { mutableStateOf(prefs.getBoolean("overlay", true)) }
+              var boost by remember { mutableStateOf(prefs.getBoolean("boost", false)) }
+              val games = remember { loadGames(ctx) }
+              val rates = remember { refreshRates(ctx) }
+              val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+              fun check() { ready = try { Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (_: Throwable) { false } }
+              LaunchedEffect(tick) { check(); boost = prefs.getBoolean("boost", false) }
+              DisposableEffect(Unit) {
+                  val l = Shizuku.OnRequestPermissionResultListener { _, _ -> check() }
+                  try { Shizuku.addRequestPermissionResultListener(l) } catch (_: Throwable) {}
+                  onDispose { try { Shizuku.removeRequestPermissionResultListener(l) } catch (_: Throwable) {} }
+              }
+              fun toast(s: String) = Toast.makeText(ctx, s, Toast.LENGTH_LONG).show()
+              fun sh(cmds: List<String>) = scope.launch {
+                  log = withContext(Dispatchers.IO) {
+                      try { cmds.joinToString("\n") { Sh.run(it) }.ifBlank { "Done (no output)" } } catch (e: Throwable) { "Failed: ${e.message}" }
+                  }
+              }
+              fun setBoost(on: Boolean) {
+                  val svc = Intent(ctx, BoostService::class.java)
+                  if (!on) { ctx.stopService(svc); prefs.edit().putBoolean("boost", false).apply(); boost = false; return }
+                  if (!ready) { toast("Start Shizuku and grant access first."); return }
+                  if (Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                      notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS); return
+                  }
+                  if (overlay && !Settings.canDrawOverlays(ctx)) {
+                      toast("Allow 'Display over other apps', then switch Boost on again.")
+                      ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
+                      return
+                  }
+                  ContextCompat.startForegroundService(ctx, svc)
+                  prefs.edit().putBoolean("boost", true).apply(); boost = true
+              }
+
+              LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                  item { Text("TAWHID BOOST", style = MaterialTheme.typography.headlineMedium, color = Neon) }
+                  item { Card {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                          Text(if (boost) "🟢 BOOST ACTIVE" else "⚪ BOOST OFF", Modifier.weight(1f), color = if (boost) Cyan else Color.Gray)
+                          Switch(checked = boost, onCheckedChange = { setBoost(it) })
+                      }
+                      Text(if (ready) "Shizuku: connected" else "Shizuku: not ready", style = MaterialTheme.typography.bodySmall)
+                      if (!ready) Button(onClick = { try { Shizuku.requestPermission(0) } catch (_: Throwable) { toast("Shizuku is not running.") } }) { Text("GRANT ACCESS") }
+                      Text("Refresh rates: ${rates.joinToString(", ") { "${it}Hz" }}" + if (rates.max() < 120) " • 120Hz not supported" else "", style = MaterialTheme.typography.bodySmall)
+                  } }
+                  item { Card {
+                      Text("SETTINGS", color = Cyan)
+                      Text("Performance mode"); Chips(listOf("BALANCED", "PERFORMANCE", "MAX"), mode) { mode = it; prefs.edit().putString("mode", it).apply() }
+                      Text("Target FPS"); Chips(listOf("30", "40", "60", "90", "120").filter { it.toInt() <= rates.max() }, fps) { fps = it; prefs.edit().putString("fps", it).apply() }
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                          Text("FPS OVERLAY", Modifier.weight(1f))
+                          Switch(checked = overlay, onCheckedChange = { overlay = it; prefs.edit().putBoolean("overlay", it).apply() })
+                      }
+                      Text("Changes apply the next time a game starts.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                  } }
+                  item { Card {
+                      Text("MANUAL BOOST: ${sel?.label ?: "tap a game below"}", color = Cyan)
+                      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                          Button(enabled = ready && sel != null, onClick = { sh(Cfg.applyCmds(mode, fps, sel!!.pkg)) }) { Text("BOOST") }
+                          OutlinedButton(enabled = ready && sel != null, onClick = { sh(Cfg.resetCmds(sel!!.pkg)) }) { Text("RESET") }
+                      }
+                      if (log.isNotBlank()) Text(log, style = MaterialTheme.typography.bodySmall)
+                  } }
+                  item { Text("MY GAMES (${games.size})", color = Neon) }
+                  items(games) { g -> Card {
+                      Text("🎮 ${g.label}", Modifier.clickable { sel = g })
+                      Text(g.pkg, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                  } }
+              }
+          }
+          EOF_8
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.7 }
+      - run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with: { name: TawhidBoost-debug-apk, path: app/build/outputs/apk/debug/*.apk }
