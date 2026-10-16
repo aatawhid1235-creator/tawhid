@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090d14">
+  <meta name="description" content="A local-first gaming practice assistant with aim drills, manual sensitivity profiles and HUD previews.">
+  <title>TXB Gaming Panel</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/assets/txb-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/ui-fixes.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <a class="brand" href="#dashboard" data-page="dashboard" aria-label="TXB Gaming Panel home">
+        <span class="brand-mark">T<span>X</span></span>
+        <span class="brand-copy"><strong>TXB GAMING</strong><small>PRACTICE PANEL</small></span>
+      </a>
+      <div class="nav-label">WORKSPACE</div>
+      <nav class="nav-list">
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">◈</span>Dashboard</button>
+        <button class="nav-item" data-page="training"><span class="nav-icon">◎</span>Aim training</button>
+        <button class="nav-item" data-page="sensitivity"><span class="nav-icon">⌖</span>Sensitivity</button>
+        <button class="nav-item" data-page="hud"><span class="nav-icon">▦</span>HUD preview</button>
+        <button class="nav-item" data-page="performance"><span class="nav-icon">◴</span>Performance</button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-status"><span class="status-dot"></span><span>LOCAL MODE</span><span class="status-lock">⌑</span></div>
+      <p class="sidebar-note">Your settings stay in this browser. TXB does not connect to or control Free Fire.</p>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="mobileMenu" aria-label="Open navigation" aria-expanded="false">☰</button>
+        <div class="breadcrumb"><span>TXB</span><b>/</b><strong id="pageTitle">Dashboard</strong></div>
+        <div class="top-actions">
+          <span class="local-badge"><i></i> LOCAL SAVE</span>
+          <button class="button button-primary top-save" id="saveProfileTop">＋ <span>Save Profile</span></button>
+        </div>
+      </header>
+
+      <div class="page-wrap">
+        <section class="page active" id="page-dashboard" aria-labelledby="dashboardHeading">
+          <div class="hero-card">
+            <div class="hero-copy">
+              <div class="eyebrow"><span class="eyebrow-line"></span>TRAINING COMPANION <span class="eyebrow-version">WEB / 01</span></div>
+              <h1 id="dashboardHeading">Play sharper.<br><span>Keep it fair.</span></h1>
+              <p>Build consistency with quick aim drills, tune your own sensitivity notes, and preview a custom HUD — all on this device.</p>
+              <div class="hero-buttons"><button class="button button-primary" data-go="training">Start a practice session <span>↗</span></button><button class="button button-quiet" data-go="sensitivity">Tune sensitivity <span>→</span></button></div>
+              <div class="hero-foot"><span class="pulse-ring"></span> READY WHEN YOU ARE <span class="hero-sep">/</span> NO GAME ACCESS</div>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+              <div class="art-ring ring-one"></div><div class="art-ring ring-two"></div><div class="art-cross cross-x"></div><div class="art-cross cross-y"></div>
+              <div class="art-center"><div class="art-center-inner">T<span>X</span></div></div>
+              <div class="art-tag tag-top">TXB <small>TRAINING SYSTEM</small></div>
+              <div class="art-tag tag-bottom"><span class="mini-bars"><i></i><i></i><i></i><i></i></span> TOUCH READY</div>
+              <div class="art-point point-a"></div><div class="art-point point-b"></div>
+            </div>
+          </div>
+
+          <div class="section-heading"><div><span class="eyebrow">AT A GLANCE</span><h2>Your training overview</h2></div><button class="text-button" data-go="performance">Device details <span>→</span></button></div>
+          <div class="stats-grid">
+            <article class="metric-card"><div class="metric-top"><span>SESSIONS</span><span class="metric-icon cyan">◴</span></div><strong id="statSessions">0</strong><small>Saved practice sessions</small><div class="metric-spark spark-cyan"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+            <article class="metric-card"><div class="metric-top"><span>TRAINING ACCURACY</span><span class="metric-icon red">⌖</span></div><strong id="statAccuracy">—<em>%</em></strong><small>From your recorded taps</small><div class="metric-spark spark-red"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+            <article class="metric-card"><div class="metric-top"><span>AVG. REACTION</span><span class="metric-icon purple">ϟ</span></div><strong id="statReaction">—<em>ms</em></strong><small>Successful target taps only</small><div class="metric-spark spark-purple"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+            <article class="metric-card"><div class="metric-top"><span>ACTIVE PROFILE</span><span class="metric-icon blue">▤</span></div><strong class="profile-stat" id="statProfile">Balanced</strong><small id="statProfileMeta">Saved on this device</small><div class="metric-spark spark-blue"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          </div>
+
+          <div class="dashboard-lower">
+            <article class="panel-card feature-panel">
+              <div class="panel-heading"><div><span class="eyebrow">QUICK CONTROLS</span><h3>Training modules</h3></div><span class="panel-count">06 MODULES</span></div>
+              <div class="module-list">
+                <label class="module-row"><span class="module-symbol cyan">◎</span><span class="module-copy"><strong>Aim training</strong><small>Targets & reaction drills</small></span><input type="checkbox" data-feature="aim" class="switch-input"><span class="switch" aria-hidden="true"></span></label>
+                <label class="module-row"><span class="module-symbol red">⌖</span><span class="module-copy"><strong>Sensitivity lab</strong><small>Manual profile calibration</small></span><input type="checkbox" data-feature="sensitivity" class="switch-input"><span class="switch" aria-hidden="true"></span></label>
+                <label class="module-row"><span class="module-symbol blue">▦</span><span class="module-copy"><strong>HUD preview</strong><small>Arrange your practice layout</small></span><input type="checkbox" data-feature="hud" class="switch-input"><span class="switch" aria-hidden="true"></span></label>
+                <label class="module-row"><span class="module-symbol purple">◴</span><span class="module-copy"><strong>Browser monitor</strong><small>Page-only device readings</small></span><input type="checkbox" data-feature="performance" class="switch-input"><span class="switch" aria-hidden="true"></span></label>
+                <label class="module-row"><span class="module-symbol gold">⊕</span><span class="module-copy"><strong>Crosshair practice</strong><small>Reticle follows your pointer</small></span><input type="checkbox" data-feature="crosshair" class="switch-input"><span class="switch" aria-hidden="true"></span></label>
+                <label class="module-row"><span class="module-symbol pink">♫</span><span class="module-copy"><strong>Sound practice</strong><small>Optional in-page reaction cues</small></span><input type="checkbox" data-feature="sound" class="switch-input"><span class="switch" aria-hidden="true"></span></label>
+              </div>
+              <div class="module-foot"><span>Switches pause or enable the matching browser feature.</span><button class="text-button" id="stopAll">Stop all</button></div>
+            </article>
+            <article class="panel-card session-panel">
+              <div class="panel-heading"><div><span class="eyebrow">RECENT ACTIVITY</span><h3>Practice history</h3></div><button class="icon-button" id="clearHistory" title="Clear history" aria-label="Clear practice history">↻</button></div>
+              <div id="historyList" class="history-list"><div class="empty-state"><span class="empty-icon">◴</span><strong>No sessions yet</strong><small>Complete a drill to see your progress here.</small><button class="text-button" data-go="training">Start training →</button></div></div>
+              <div class="privacy-callout"><span>⌑</span><p><strong>Private by default</strong><br>Your practice sessions stay in this browser’s local storage.</p></div>
+            </article>
+          </div>
+          <div class="safety-banner"><span class="safety-icon">i</span><p><strong>Browser-only companion</strong><span>This page cannot read enemy locations, inspect Free Fire’s memory, inject controls, or measure the game’s FPS. Practice results below come only from this page.</span></p><button class="text-button" data-go="performance">About limits <span>→</span></button></div>
+        </section>
+
+        <section class="page" id="page-training" aria-labelledby="trainingHeading">
+          <div class="page-intro"><div><div class="eyebrow"><span class="eyebrow-line"></span>BUILD CONSISTENCY</div><h1 id="trainingHeading">Aim training</h1><p>Headshot practice in a self-contained canvas. Tap moving target centers and train your reaction; scores belong to TXB, not Free Fire.</p></div><div class="page-chip"><span class="status-dot"></span> IN-APP SIMULATOR</div></div>
+          <div class="training-layout">
+            <div class="panel-card training-card">
+              <div class="training-toolbar">
+                <div class="segmented" role="group" aria-label="Training mode"><button class="segment active" data-mode="tracking">HEADSHOT TRACKING</button><button class="segment" data-mode="reaction">REACTION</button></div>
+                <div class="training-tools"><label>SESSION <select id="sessionDuration"><option value="30">30 sec</option><option value="60">60 sec</option><option value="90">90 sec</option></select></label><label>SPEED <select id="targetSpeed"><option value="1">CALM</option><option value="1.5" selected>STANDARD</option><option value="2.2">FAST</option></select></label></div>
+              </div>
+              <div class="canvas-wrap" id="canvasWrap"><canvas id="practiceCanvas" aria-label="Aim practice area. Tap or click a target to record a hit."></canvas><div class="canvas-overlay" id="canvasOverlay"><span class="overlay-target">⊕</span><strong>Ready to practice?</strong><small>Start the session, then tap the target as it moves.</small></div><div class="canvas-running-label" id="canvasRunningLabel"><span class="status-dot"></span><span>SESSION LIVE</span><b id="timerText">00:30</b></div><div class="canvas-crosshair" id="canvasCrosshair" aria-hidden="true"><i></i><b></b></div></div>
+              <div class="training-actions"><button class="button button-primary" id="startTraining">▶ <span>Start</span></button><button class="button button-secondary" id="stopTraining" disabled>■ <span>Stop</span></button><button class="button button-quiet" id="resetTraining">↻ <span>Reset</span></button><span class="keyboard-hint">TAP TARGETS • MISS COUNTS WHEN YOU TAP THE FIELD</span></div>
+            </div>
+            <aside class="training-aside">
+              <article class="panel-card live-stats"><div class="panel-heading"><div><span class="eyebrow">CURRENT SESSION</span><h3>Live stats</h3></div><span class="live-pill"><i></i> LIVE</span></div><div class="live-number-grid"><div><small>HITS</small><strong id="liveHits">0</strong></div><div><small>MISSES</small><strong id="liveMisses">0</strong></div><div><small>ACCURACY</small><strong id="liveAccuracy">—%</strong></div><div><small>AVG. REACTION</small><strong id="liveReaction">— ms</strong></div></div><div class="accuracy-track"><span id="accuracyFill"></span></div></article>
+              <article class="panel-card practice-notes"><span class="eyebrow">PRACTICE NOTES</span><h3>Small, focused reps</h3><ul><li>Relax your grip and keep the device stable.</li><li>Follow the target smoothly before speeding up.</li><li>Use reaction mode to practice responding to a cue.</li></ul><div class="notice-box">Training scores measure taps on this page only. They do not predict or guarantee in-game performance.</div></article>
+            </aside>
+          </div>
+          <article class="panel-card session-summary"><div><span class="eyebrow">LAST COMPLETED SESSION</span><h3 id="lastSessionTitle">No saved session yet</h3></div><div class="summary-values"><span><b id="lastSessionAccuracy">—</b><small>ACCURACY</small></span><span><b id="lastSessionReaction">—</b><small>AVG REACTION</small></span><span><b id="lastSessionHits">—</b><small>HITS</small></span></div></article>
+        </section>
+
+        <section class="page" id="page-sensitivity" aria-labelledby="sensitivityHeading">
+          <div class="page-intro"><div><div class="eyebrow"><span class="eyebrow-line"></span>MANUAL CALIBRATION</div><h1 id="sensitivityHeading">Sensitivity lab</h1><p>Save and compare your own values. Recommendations are transparent starting points to try manually in game.</p></div><div class="page-chip">LOCAL PROFILES</div></div>
+          <div class="sensitivity-layout">
+            <div class="panel-card sensitivity-editor">
+              <div class="panel-heading"><div><span class="eyebrow">YOUR SETTINGS</span><h3>Profile editor</h3></div><div class="profile-select-wrap"><label for="profileSelect" class="sr-only">Choose sensitivity profile</label><select id="profileSelect"></select></div></div>
+              <div class="profile-name-row"><label for="profileName">PROFILE NAME</label><input id="profileName" maxlength="32" autocomplete="off" placeholder="My profile"></div>
+              <div class="sliders-grid" id="sensitivitySliders"></div>
+              <div class="sensitivity-actions"><button class="button button-primary" id="saveProfile">Save Profile</button><button class="button button-secondary" id="duplicateProfile">Duplicate</button><button class="button button-quiet" id="deleteProfile">Delete</button><button class="button button-quiet" id="exportProfiles">Export</button><button class="button button-quiet" id="importProfiles">Import</button><input type="file" id="profileFile" accept="application/json,.json" hidden></div>
+              <div class="form-divider"></div>
+              <div class="style-row"><div><strong>Play style</strong><small>Used by the optional recommendation helper</small></div><select id="playStyle"><option value="balanced">Balanced</option><option value="precision">Precision</option><option value="fast">Fast flicks</option></select></div>
+            </div>
+            <aside class="panel-card recommendation-card"><span class="eyebrow">DEVICE-AWARE STARTING POINT</span><h3>Manual recommendation</h3><div class="device-summary" id="recommendationDevice">Detecting browser display…</div><div class="recommendation-values" id="recommendationValues"></div><div class="recommendation-reason" id="recommendationReason"></div><button class="button button-secondary full-width" id="applyRecommendation">Use as draft values</button><p class="fine-print">Heuristic only. Browser cannot read your Free Fire settings or determine a universally correct sensitivity. Apply values yourself in the game and tune by feel.</p></aside>
+          </div>
+          <article class="safety-banner"><span class="safety-icon">i</span><p><strong>Manual only</strong><span>These values are saved in this browser. TXB will not open, change, or inject anything into Free Fire.</span></p></article>
+        </section>
+
+        <section class="page" id="page-hud" aria-labelledby="hudHeading">
+          <div class="page-intro"><div><div class="eyebrow"><span class="eyebrow-line"></span>LAYOUT WORKSHOP</div><h1 id="hudHeading">HUD preview</h1><p>Drag mock buttons to arrange a layout that feels comfortable. This preview never edits the game HUD.</p></div><div class="page-chip">PREVIEW ONLY</div></div>
+          <div class="hud-layout">
+            <article class="panel-card hud-editor-card"><div class="panel-heading"><div><span class="eyebrow">TOUCH LAYOUT</span><h3>Mock battle view</h3></div><div class="hud-toolbar"><button class="button button-quiet compact" id="addHudButton">＋ Add button</button><button class="button button-quiet compact" id="resetHud">Reset</button></div></div>
+              <div class="hud-stage-wrap"><div class="hud-stage" id="hudStage" aria-label="Drag HUD preview buttons to reposition them"><div class="hud-stage-label">TXB PREVIEW • NOT A LIVE GAME</div><div class="hud-center-mark">＋</div><div class="hud-safe-area"></div></div></div>
+              <div class="hud-editor-controls"><label for="hudSize">Selected button size <output id="hudSizeValue">64 px</output></label><input id="hudSize" type="range" min="42" max="104" value="64"><label for="layoutName">LAYOUT NAME</label><input id="layoutName" maxlength="32" placeholder="My layout"><div class="hud-save-row"><button class="button button-primary" id="saveHud">Save layout</button><button class="button button-secondary" id="duplicateHud">Duplicate</button><select id="layoutSelect" aria-label="Load saved HUD layout"></select></div></div>
+            </article>
+            <aside class="panel-card hud-help"><span class="eyebrow">LAYOUT TIPS</span><h3>Make it yours</h3><p>Tap a control to select it, then drag it. Use the size slider to adjust the selected control. Keyboard users can focus a control and move it with the arrow keys.</p><div class="hud-legend"><span><i class="legend-dot cyan-dot"></i>Selected</span><span><i class="legend-dot red-dot"></i>Action</span><span><i class="legend-dot gray-dot"></i>Utility</span></div><div class="notice-box">The Free Fire HUD is not accessible to browser apps. Changes here are visual notes you can recreate manually.</div></aside>
+          </div>
+        </section>
+
+        <section class="page" id="page-performance" aria-labelledby="performanceHeading">
+          <div class="page-intro"><div><div class="eyebrow"><span class="eyebrow-line"></span>SUPPORTED BROWSER DATA</div><h1 id="performanceHeading">Performance</h1><p>Readings below describe this browser and device where APIs permit. They are not measurements of Free Fire.</p></div><button class="button button-secondary" id="refreshMetrics">↻ Refresh readings</button></div>
+          <div class="performance-grid">
+            <article class="panel-card performance-card"><div class="panel-heading"><div><span class="eyebrow">PAGE RENDERING</span><h3>Browser frame rate</h3></div><span class="metric-icon cyan">◴</span></div><div class="perf-big" id="browserFps">—<small>FPS</small></div><p>Estimated requestAnimationFrame rate of this page while visible.</p><div class="notice-box">Free Fire game FPS: <strong>Unavailable to a browser page</strong>. Display refresh rate is not substituted for game FPS.</div></article>
+            <article class="panel-card performance-card"><div class="panel-heading"><div><span class="eyebrow">DEVICE CAPABILITIES</span><h3>Browser-reported info</h3></div><span class="metric-icon blue">▣</span></div><dl class="data-list"><div><dt>Platform</dt><dd id="devicePlatform">—</dd></div><div><dt>Viewport</dt><dd id="deviceViewport">—</dd></div><div><dt>Pixel ratio</dt><dd id="devicePixelRatio">—</dd></div><div><dt>Logical CPU cores</dt><dd id="deviceCores">Not exposed</dd></div><div><dt>Approx. memory class</dt><dd id="deviceMemory">Not exposed</dd></div></dl></article>
+            <article class="panel-card performance-card"><div class="panel-heading"><div><span class="eyebrow">BATTERY & THERMAL</span><h3>Power status</h3></div><span class="metric-icon gold">ϟ</span></div><div class="battery-readout"><div class="battery-gauge"><span id="batteryFill"></span></div><strong id="batteryLevel">Unavailable</strong></div><dl class="data-list compact-list"><div><dt>Charging</dt><dd id="batteryCharging">Unavailable</dd></div><div><dt>Device temperature</dt><dd id="deviceTemperature">Not exposed by this browser</dd></div></dl><p>Battery API may be unavailable in some browsers. Web pages generally cannot read device temperature.</p></article>
+            <article class="panel-card performance-card network-card"><div class="panel-heading"><div><span class="eyebrow">NETWORK DIAGNOSTICS</span><h3>Endpoint latency</h3></div><span class="network-state" id="networkStatus"><i></i> CHECKING</span></div><div class="network-readout"><strong id="networkAverage">—<small>ms</small></strong><span id="networkRange">Run a test to sample latency</span></div><div class="network-bars" id="networkBars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><button class="button button-primary" id="runNetworkTest">Run 3-request test</button><p>Endpoint: <code>cloudflare-dns.com/dns-query</code>. This is not a Free Fire server and cannot estimate game ping. Limited to three sequential requests per click.</p></article>
+          </div>
+          <div class="safety-banner"><span class="safety-icon">i</span><p><strong>Honest telemetry</strong><span>No browser API gives this page access to another app’s private CPU/GPU usage, game FPS, enemy locations, or protected thermal sensors. Unsupported values are shown as unavailable.</span></p></div>
+        </section>
+
+        <footer class="app-footer"><span>TXB GAMING PANEL <i>•</i> BROWSER EDITION</span><span>LOCAL-FIRST <i>•</i> NO ACCOUNT NEEDED</span></footer>
+      </div>
+    </main>
+  </div>
+
+  <button class="floating-trigger" id="floatingTrigger" aria-label="Open quick controls" aria-expanded="false"><span class="float-mark">T<span>X</span></span><i class="float-plus">+</i></button>
+  <section class="floating-panel" id="floatingPanel" aria-label="Quick controls" hidden>
+    <div class="floating-head"><div><span class="eyebrow">TXB PRACTICE PANEL</span><strong>Local quick controls</strong></div><button class="icon-button" id="closeFloating" aria-label="Close quick controls">×</button></div>
+    <div class="floating-module-list" aria-label="Practice modules">
+      <label class="floating-module-row"><span class="floating-module-copy"><strong>Aim training</strong><small>Local target drills</small></span><input type="checkbox" data-feature="aim" aria-label="Aim training module"><span class="floating-module-switch" aria-hidden="true"></span></label>
+      <label class="floating-module-row"><span class="floating-module-copy"><strong>Sensitivity</strong><small>Manual profile notes</small></span><input type="checkbox" data-feature="sensitivity" aria-label="Sensitivity module"><span class="floating-module-switch" aria-hidden="true"></span></label>
+      <label class="floating-module-row"><span class="floating-module-copy"><strong>HUD preview</strong><small>Editable mock layout</small></span><input type="checkbox" data-feature="hud" aria-label="HUD preview module"><span class="floating-module-switch" aria-hidden="true"></span></label>
+      <label class="floating-module-row"><span class="floating-module-copy"><strong>Performance</strong><small>Browser-only readings</small></span><input type="checkbox" data-feature="performance" aria-label="Performance module"><span class="floating-module-switch" aria-hidden="true"></span></label>
+      <label class="floating-module-row"><span class="floating-module-copy"><strong>Crosshair practice</strong><small>Page pointer reticle</small></span><input type="checkbox" data-feature="crosshair" aria-label="Crosshair practice module"><span class="floating-module-switch" aria-hidden="true"></span></label>
+      <label class="floating-module-row"><span class="floating-module-copy"><strong>Sound practice</strong><small>Optional reaction tone</small></span><input type="checkbox" data-feature="sound" aria-label="Sound practice module"><span class="floating-module-switch" aria-hidden="true"></span></label>
+    </div>
+    <button class="quick-link" data-go="training"><span>◎</span><span><strong>Aim training</strong><small>Open an in-page drill</small></span><b>↗</b></button>
+    <button class="quick-link" data-go="sensitivity"><span>⌖</span><span><strong>Sensitivity</strong><small>Manual profile notes</small></span><b>↗</b></button>
+    <button class="quick-link" data-go="hud"><span>▦</span><span><strong>HUD preview</strong><small>Visual layout only</small></span><b>↗</b></button>
+    <div class="floating-disclaimer">This menu stays inside this webpage. It does not inject into, hide inside, or control a game.</div>
+  </section>
+  <div class="toast-region" id="toastRegion" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
+

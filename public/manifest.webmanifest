@@ -1,0 +1,15 @@
+{
+  "name": "TXB Gaming Panel",
+  "short_name": "TXB Panel",
+  "description": "A local-first gaming practice companion with aim drills, sensitivity notes and HUD previews.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090d14",
+  "theme_color": "#090d14",
+  "icons": [
+    { "src": "./assets/txb-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
+

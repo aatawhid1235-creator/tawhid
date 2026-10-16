@@ -1,0 +1,9 @@
+{
+  "appId": "com.txb.gamingpanel",
+  "appName": "TXB Gaming Panel",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
+
